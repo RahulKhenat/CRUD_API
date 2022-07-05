@@ -1,132 +1,104 @@
-const express = require('express')
-const bodyParser = require('body-parser')
-const mysql = require('mysql2')
+const express = require("express");
+const bodyParser = require("body-parser");
+const mysql = require("mysql2");
+const cors = require('cors');
+//const { urlencoded } = require("body-parser");
 
-const app = express()
+const app = express();
+app.use(bodyParser.urlencoded({extended:true}));
+app.use(cors());
 const port = 5000;
 app.use(express.json());
 
 // MySQL Code goes here
 const pool = mysql.createPool({
-    connectionLimit: 10,
-    host: 'localhost',
-    user: 'root',
-    password: 'root',
-    database: 'rahuldb'
+  connectionLimit: 10,
+  host: "localhost",
+  user: "root",
+  password: "root",
+  database: "cool",
+});
+
+const connection = (pool.promise = (sql) => {
+  return new Promise((resolve, reject) => {
+    pool.query(sql, (err, result) => {
+      if (err) {
+        reject(new Error());
+      } else {
+        resolve(result);
+      }
+    });
+  });
+});
+
+app.get("/api", (req, res) => {
+  pool
+    .promise("SELECT * FROM cool ")
+    .then((result) => {
+      res.json(result);
+    })
+    .catch((err) => {
+      res.json(err);
+    });
+});
+
+app.get("/api/:id", (req, res) => {
+  pool
+    .promise("select * from cool where id =" + [req.params.id])
+    .then((result) => {
+      res.json(result);
+    })
+    .catch((err) => {
+      res.json(err);
+    });
+});
+
+app.delete("/api/:id", (req, res) => {
+  pool
+    .promise("delete from cool where id = " + req.params.id)
+    .then((result) => {
+      res.json(`User with id ${req.params.id} is deleted successfully`);
+    })
+    .catch((err) => {
+      res.json(err);
+    });
+});
+
+app.post("/api", (req, res) => {
+  var name = req.body.name;
+  var salary = req.body.salary;
+
+  console.log(name,salary)
+
+  pool
+    .promise(
+      `INSERT INTO cool (name,salary) values ("${name}","${salary}") `
+    )
+    .then((result) => {
+      res.json(`User with the name has been updated.`);
+    })
+    .catch((err) => {
+      res.json(err);
+    });
 });
 
 
-app.get('/api', (req, res) => {
-    pool.getConnection((err, connection) => {
-        if (err) throw err
-        connection.query('SELECT * from users', async (err, rows) => {
-            connection.release()
 
-            try {
-               
-                res.json(rows)
-            }
-            catch (err) {
-                res.json({ message: err })
-            }
-
-        })
-
-    })
-})
+app.put("/api/:id", (req, res) => {
+  console.log(req.params.id);
+   let data = `UPDATE cool SET  name ="${req.body.name}" , salary = ${req.body.salary}  WHERE id = ${req.params.id}`
+   console.log(data);
+   pool.promise(data)
+     .then((result) => {
+       res.status(200).json(`User with the name: ${req.body.name} has been updated.`);
+     })
+     .catch((err) => {
+       res.status(400).json(err);
+     });
+ });
 
 
 
-
-app.get('/api/:id', (req, res) => {
-    pool.getConnection((err, connection) => {
-        if (err) throw err
-        connection.query('SELECT * from users WHERE id = ?', [req.params.id], async (err, rows) => {
-            connection.release()
-
-            try {
-
-                res.json(rows)
-            }
-            catch (err) {
-                res.json({ message: err })
-            }
-
-        })
-
-    })
-})
-
-
-
-app.delete('/api/:id', (req, res) => {
-    pool.getConnection((err, connection) => {
-        if (err) throw err
-        connection.query('delete * from users WHERE id = ?', [req.params.id], async (err, rows) => {
-            connection.release()
-
-            try {
-
-                res.send(`User with the record ID ${[req.params.id]} has been removed.`)
-            }
-            catch (err) {
-                res.json({ message: err })
-            }
-
-            console.log('The data from users table are: \n', rows)
-
-        })
-
-    })
-})
-
-
-// Add users
-app.post('/api', (req, res) => {
-
-    pool.getConnection((err, connection) => {
-        if (err) throw err
-
-        const params = req.body
-        connection.query('INSERT INTO users SET ?', params, async (err, rows) => {
-            connection.release()
-            try {
-
-                res.send(`User with the name: ${name} has been updated.`)
-            }
-            catch (err) {
-                res.json({ message: err })
-            }
-
-
-        })
-    })
-});
-
-// Update a  users
-app.put('/api', (req, res) => {
-
-    pool.getConnection((err, connection) => {
-        if (err) throw err
-        console.log(`connected as id ${connection.threadId}`)
-
-        const { id, name, tagline, description, image } = req.body
-
-        connection.query('UPDATE users SET name = ?, tagline = ?, description = ?, image = ? WHERE id = ?', [name, tagline, description, image, id], async (err, rows) => {
-            connection.release()
-
-            try {
-
-                res.send(`User with the name: ${name} has been updated.`)
-            }
-            catch (err) {
-                res.json({ message: err })
-            }
-
-        })
-
-    })
-})
 
 // Listen on enviroment port or 5000
-app.listen(port, () => console.log(`Listening on port ${port}`))
+app.listen(port, () => console.log(`Listening on port ${port}`));
